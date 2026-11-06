@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E. coli Ingredients Viewer</title>
+<meta name="description" content="Browse the coarse-grained packing ingredients of a whole-cell E. coli K-12 model.">
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #ffffff; --text: #1d1d1f; --muted: #6b6b70; --line: #e3e3e0;
+    --accent: #2f6fdb; --row-hover: #f0f4fc; --row-sel: #e2ebfb;
+    --c-CYTO: #2f6fdb; --c-IM: #d9822b; --c-PERI: #2e9e6a; --c-OM: #b5458f; --c-EXT: #7a6fd0; --c-NUC: #c4473a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141416; --panel: #1d1d20; --text: #ececf0; --muted: #9a9aa3; --line: #2e2e33;
+      --accent: #6b9cf0; --row-hover: #23262e; --row-sel: #27324a;
+      --c-CYTO: #6b9cf0; --c-IM: #f0a057; --c-PERI: #4fc28d; --c-OM: #d873b6; --c-EXT: #a59cf0; --c-NUC: #ec7a6c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  header { padding: 24px 24px 8px; max-width: 1400px; margin: 0 auto; }
+  h1 { margin: 0 0 4px; font-size: 22px; font-weight: 650; }
+  .sub { color: var(--muted); margin: 0; }
+  .stats { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0 0; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; min-width: 130px; }
+  .stat b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--muted); font-size: 12px; }
+  .bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin: 14px 0 6px; background: var(--line); }
+  .bar div { height: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 440px); gap: 16px; padding: 16px 24px 32px; max-width: 1400px; margin: 0 auto; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; border-bottom: 1px solid var(--line); }
+  input, select { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+  input { flex: 1 1 200px; min-width: 0; }
+  .tablewrap { height: 70vh; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td.name { white-space: normal; min-width: 180px; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+  th { position: sticky; top: 0; background: var(--panel); font-weight: 600; font-size: 12px; color: var(--muted); cursor: pointer; user-select: none; z-index: 1; }
+  th.num, td.num { text-align: right; }
+  th.sorted { color: var(--text); }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: var(--row-hover); }
+  tbody tr.sel { background: var(--row-sel); }
+  .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 10px; color: #fff; }
+  .count { padding: 8px 12px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); }
+  #view { position: sticky; top: 16px; align-self: start; }
+  #canvas { width: 100%; aspect-ratio: 1 / 1; display: block; background: var(--bg); touch-action: none; }
+  .detail { padding: 14px 16px; }
+  .detail h2 { font-size: 16px; margin: 0 0 4px; }
+  .detail .id { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 13px; }
+  dt { color: var(--muted); }
+  dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .flags { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 12px; }
+  a { color: var(--accent); }
+  .hint { color: var(--muted); font-size: 12px; padding: 8px 16px 0; }
+  footer { max-width: 1400px; margin: 0 auto; padding: 0 24px 32px; color: var(--muted); font-size: 12px; }
+  @media (max-width: 900px) {
+    header { padding: 16px 16px 4px; }
+    main { grid-template-columns: 1fr; padding: 12px 16px 24px; }
+    #view { position: static; order: -1; }
+    .tablewrap { height: 60vh; }
+    footer { padding: 0 16px 24px; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<header>
+  <h1>Virtual <i>E. coli</i> K-12: packing ingredients</h1>
+  <p class="sub" id="meta">Loading ingredients…</p>
+  <div class="stats" id="stats"></div>
+  <div class="bar" id="bar"></div>
+  <div class="legend" id="legend"></div>
+</header>
+
+<main>
+  <section class="card">
+    <div class="controls">
+      <input id="q" type="search" placeholder="Search gene, name, PDB ID or UniProt accession…" aria-label="Search">
+      <select id="comp" aria-label="Compartment"><option value="">All compartments</option></select>
+      <select id="src" aria-label="Structure source">
+        <option value="">All sources</option><option value="pdb">PDB</option><option value="afdb">AlphaFold</option>
+      </select>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th data-k="id">ID</th>
+          <th data-k="name">Name</th>
+          <th data-k="compartment">Comp.</th>
+          <th data-k="copies_per_cell" class="num">Copies / cell</th>
+          <th data-k="mass_da" class="num">Mass (kDa)</th>
+          <th data-k="encapsulating_radius_A" class="num">Radius (Å)</th>
+          <th data-k="nsph" class="num">Spheres</th>
+          <th data-k="source">Source</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="count" id="count"></div>
+  </section>
+
+  <aside class="card" id="view">
+    <canvas id="canvas"></canvas>
+    <div class="hint">Drag to rotate, scroll or pinch to zoom. Each sphere stands in for about 12 residues. The grey disc is the membrane plane, when known.</div>
+    <div class="detail" id="detail"></div>
+  </aside>
+</main>
+
+<footer>
+  Data: <code>ecoli-vcell-data-0.1.1/output/ingredients.json</code>, built by the pipeline in this repository from UniProt proteome UP000000625, Li et al. 2014 abundances, PDB and AlphaFold DB structures.
+</footer>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const DATA_URL = "ecoli-vcell-data-0.1.1/output/ingredients.json";
+const COMP_NAMES = { CYTO: "Cytoplasm", IM: "Inner membrane", PERI: "Periplasm", OM: "Outer membrane", EXT: "Extracellular", NUC: "Nucleoid" };
+const css = getComputedStyle(document.documentElement);
+const compColor = c => css.getPropertyValue("--c-" + c).trim() || "#888";
+const fmt = (n, d = 0) => n == null || isNaN(n) ? "–" : Number(n).toLocaleString(undefined, { maximumFractionDigits: d, minimumFractionDigits: d });
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+let all = [], shown = [], sortKey = "copies_per_cell", sortDir = -1, selected = null;
+
+// ---------- 3D view ----------
+const canvas = document.getElementById("canvas");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 10000);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x444455, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(1, 1.5, 2); camera.add(sun); scene.add(camera);
+const group = new THREE.Group(); scene.add(group);
+const sphereGeo = new THREE.SphereGeometry(1, 28, 18);
+
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== Math.round(w * renderer.getPixelRatio()) || canvas.height !== Math.round(h * renderer.getPixelRatio())) {
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+}
+(function loop() { resize(); controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
+
+function show3D(ing) {
+  group.clear();
+  const sph = ing.spheres_A || [];
+  if (!sph.length) return;
+  const mat = new THREE.MeshStandardMaterial({ color: compColor(ing.compartment), roughness: 0.55, metalness: 0.05 });
+  let cx = 0, cy = 0, cz = 0;
+  sph.forEach(([x, y, z]) => { cx += x; cy += y; cz += z; });
+  cx /= sph.length; cy /= sph.length; cz /= sph.length;
+  let R = 0;
+  for (const [x, y, z, r] of sph) {
+    const m = new THREE.Mesh(sphereGeo, mat);
+    m.position.set(x - cx, y - cy, z - cz); m.scale.setScalar(r);
+    group.add(m);
+    R = Math.max(R, Math.hypot(x - cx, y - cy, z - cz) + r);
+  }
+  if (ing.membrane && ing.membrane.normal) {
+    const [nx, ny, nz] = ing.membrane.normal;
+    const [mx, my, mz] = ing.membrane.center_A || [cx, cy, cz];
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(R * 1.25, R * 1.25, 30, 64, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0x9a9aa3, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false }));
+    const cap = new THREE.Mesh(new THREE.CircleGeometry(R * 1.25, 64),
+      new THREE.MeshBasicMaterial({ color: 0x9a9aa3, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false }));
+    cap.rotation.x = -Math.PI / 2;
+    const slab = new THREE.Group(); slab.add(disc, cap);
+    slab.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(nx, ny, nz).normalize());
+    slab.position.set(mx - cx, my - cy, mz - cz);
+    group.add(slab);
+  }
+  controls.target.set(0, 0, 0);
+  camera.position.set(0, R * 0.6, R * 2.9);
+  camera.near = R / 100; camera.far = R * 20; camera.updateProjectionMatrix();
+}
+
+// ---------- detail panel ----------
+function showDetail(ing) {
+  const accs = (ing.members || []).map(m => m.accession).filter(Boolean);
+  const genes = (ing.members || []).map(m => m.gene).filter(Boolean);
+  const structLink = ing.source === "pdb" && ing.pdb_id
+    ? `<a href="https://www.rcsb.org/structure/${esc(ing.pdb_id)}" target="_blank" rel="noopener">PDB ${esc(ing.pdb_id.toUpperCase())}</a>`
+    : accs[0] ? `<a href="https://alphafold.ebi.ac.uk/entry/${esc(accs[0])}" target="_blank" rel="noopener">AlphaFold ${esc(accs[0])}</a>` : "–";
+  const uni = accs.slice(0, 6).map(a => `<a href="https://www.uniprot.org/uniprotkb/${esc(a)}" target="_blank" rel="noopener">${esc(a)}</a>`).join(", ") + (accs.length > 6 ? ` +${accs.length - 6} more` : "");
+  const flags = (ing.flags || []).map(f => `<li>${esc(f)}</li>`).join("");
+  document.getElementById("detail").innerHTML = `
+    <h2>${esc(ing.name || ing.id)}</h2>
+    <div class="id">${esc(ing.id)} · ${ing.kind === "assembly" ? "assembly of " + genes.length + " genes" : "single protein"}</div>
+    <dl>
+      <dt>Compartment</dt><dd><span class="tag" style="background:${compColor(ing.compartment)}">${esc(ing.compartment)}</span> ${esc(COMP_NAMES[ing.compartment] || "")}</dd>
+      <dt>Copies / cell</dt><dd>${fmt(ing.copies_per_cell)}</dd>
+      <dt>Mass</dt><dd>${fmt(ing.mass_da / 1000, 1)} kDa</dd>
+      <dt>Residues</dt><dd>${fmt(ing.n_residues)}${ing.nucleic_acid_residues ? " (+" + fmt(ing.nucleic_acid_residues) + " nucleotides)" : ""}</dd>
+      <dt>Spheres</dt><dd>${fmt((ing.spheres_A || []).length)}</dd>
+      <dt>Radius</dt><dd>${fmt(ing.encapsulating_radius_A, 1)} Å encapsulating · ${fmt(ing.radius_of_gyration_A, 1)} Å gyration</dd>
+      <dt>Structure</dt><dd>${structLink}${ing.file ? ` <span style="color:var(--muted)">(${esc(ing.file)})</span>` : ""}</dd>
+      <dt>Chains</dt><dd>${esc((ing.chains_kept || []).length)}</dd>
+      ${genes.length > 1 ? `<dt>Genes</dt><dd>${esc(genes.slice(0, 20).join(", "))}${genes.length > 20 ? " …" : ""}</dd>` : ""}
+      <dt>UniProt</dt><dd>${uni || "–"}</dd>
+      ${ing.membrane ? `<dt>Membrane</dt><dd>${esc(ing.membrane.method || "oriented")}${ing.membrane.n_segments ? ", " + ing.membrane.n_segments + " TM segments" : ""}</dd>` : ""}
+    </dl>
+    ${flags ? `<ul class="flags">${flags}</ul>` : ""}`;
+}
+
+function select(ing) {
+  selected = ing;
+  document.querySelectorAll("#rows tr").forEach(tr => tr.classList.toggle("sel", tr.dataset.id === ing.id));
+  show3D(ing); showDetail(ing);
+  try { history.replaceState(null, "", "#" + encodeURIComponent(ing.id)); } catch (e) {}
+}
+
+// ---------- table ----------
+function render() {
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const comp = document.getElementById("comp").value, src = document.getElementById("src").value;
+  shown = all.filter(i => (!comp || i.compartment === comp) && (!src || i.source === src) && (!q || i._search.includes(q)));
+  shown.sort((a, b) => {
+    const x = a[sortKey], y = b[sortKey];
+    if (typeof x === "string" || typeof y === "string") return sortDir * String(x ?? "").localeCompare(String(y ?? ""));
+    return sortDir * ((x ?? -Infinity) - (y ?? -Infinity));
+  });
+  document.querySelectorAll("th").forEach(th => {
+    th.classList.toggle("sorted", th.dataset.k === sortKey);
+    th.textContent = th.textContent.replace(/ [▲▼]$/, "") + (th.dataset.k === sortKey ? (sortDir > 0 ? " ▲" : " ▼") : "");
+  });
+  const LIMIT = 600;
+  document.getElementById("rows").innerHTML = shown.slice(0, LIMIT).map(i => `
+    <tr data-id="${esc(i.id)}"${selected && selected.id === i.id ? ' class="sel"' : ""}>
+      <td>${esc(i.id)}</td>
+      <td class="name" title="${esc(i.name)}">${esc((i.name || "").length > 70 ? i.name.slice(0, 68) + "…" : i.name)}</td>
+      <td><span class="tag" style="background:${compColor(i.compartment)}">${esc(i.compartment)}</span></td>
+      <td class="num">${fmt(i.copies_per_cell)}</td>
+      <td class="num">${fmt(i.mass_da / 1000, 1)}</td>
+      <td class="num">${fmt(i.encapsulating_radius_A, 1)}</td>
+      <td class="num">${i.nsph}</td>
+      <td>${i.source === "pdb" ? "PDB " + esc(i.pdb_id) : "AlphaFold"}</td>
+    </tr>`).join("");
+  document.getElementById("count").textContent = `${fmt(shown.length)} of ${fmt(all.length)} ingredients` + (shown.length > LIMIT ? ` (showing the first ${LIMIT}; refine the search to see more)` : "");
+}
+
+document.getElementById("rows").addEventListener("click", e => {
+  const tr = e.target.closest("tr"); if (!tr) return;
+  const ing = all.find(i => i.id === tr.dataset.id); if (ing) select(ing);
+});
+document.querySelectorAll("th").forEach(th => th.addEventListener("click", () => {
+  const k = th.dataset.k;
+  if (k === sortKey) sortDir = -sortDir; else { sortKey = k; sortDir = ["id", "name", "compartment", "source"].includes(k) ? 1 : -1; }
+  render();
+}));
+["q", "comp", "src"].forEach(id => document.getElementById(id).addEventListener("input", render));
+
+// ---------- load ----------
+fetch(DATA_URL).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => {
+  all = d.ingredients.map(i => ({
+    ...i, nsph: (i.spheres_A || []).length,
+    _search: [i.id, i.name, i.pdb_id, ...(i.members || []).flatMap(m => [m.gene, m.accession])].join(" ").toLowerCase()
+  }));
+  document.getElementById("meta").innerHTML =
+    `${esc(d.organism)} · proteome ${esc(d.proteome)} · generated ${esc(d.generated)} · coarse-grained at ~${esc(d.settings?.res_per_sphere)} residues per sphere`;
+
+  const totalCopies = all.reduce((s, i) => s + (i.copies_per_cell || 0), 0);
+  const totalMass = all.reduce((s, i) => s + (i.copies_per_cell || 0) * (i.mass_da || 0), 0);
+  const pdb = all.filter(i => i.source === "pdb").length;
+  document.getElementById("stats").innerHTML = [
+    [fmt(all.length), "ingredients"],
+    [fmt(totalCopies / 1e6, 2) + " M", "protein copies per cell"],
+    [fmt(totalMass * 1.66054e-9, 0) + " fg", "protein mass per cell"],
+    [fmt(pdb) + " / " + fmt(all.length - pdb), "PDB / AlphaFold structures"],
+  ].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
+
+  const byComp = {};
+  all.forEach(i => byComp[i.compartment] = (byComp[i.compartment] || 0) + (i.copies_per_cell || 0) * (i.mass_da || 0));
+  const comps = Object.keys(byComp).sort((a, b) => byComp[b] - byComp[a]);
+  document.getElementById("bar").innerHTML = comps.map(c =>
+    `<div title="${esc(COMP_NAMES[c] || c)}: ${fmt(100 * byComp[c] / totalMass, 1)}% of protein mass" style="width:${100 * byComp[c] / totalMass}%;background:${compColor(c)}"></div>`).join("");
+  document.getElementById("legend").innerHTML = comps.map(c =>
+    `<span><i style="background:${compColor(c)}"></i>${esc(COMP_NAMES[c] || c)} ${fmt(100 * byComp[c] / totalMass, 1)}%</span>`).join("") +
+    `<span>· share of protein mass</span>`;
+  const sel = document.getElementById("comp");
+  comps.forEach(c => sel.insertAdjacentHTML("beforeend", `<option value="${esc(c)}">${esc(COMP_NAMES[c] || c)}</option>`));
+
+  render();
+  const fromHash = decodeURIComponent(location.hash.slice(1));
+  select(all.find(i => i.id === fromHash) || shown[0]);
+}).catch(err => {
+  document.getElementById("meta").textContent = "Could not load " + DATA_URL + " (" + err.message + ").";
+});
+</script>
+</body>
+</html>
