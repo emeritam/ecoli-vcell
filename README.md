@@ -97,11 +97,6 @@ To view your new output, open the [viewer](https://emeritam.github.io/ecoli-vcel
 - Copy numbers from synthesis rates (Li et al. 2014) give a higher total protein mass than typical
   estimates for a single cell; treat absolute totals with care.
 
-## Updating the website
-
-The site is served by GitHub Pages from the `main` branch. To publish a new viewer version, replace
-`viewer.html`, then commit and push; the site updates within about a minute.
-
 ## Data sources
 
 - [UniProt](https://www.uniprot.org/proteomes/UP000000625) reference proteome UP000000625 (*E. coli* K-12 MG1655)
