@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Virtual E. coli K-12: a browser-based whole-cell molecular model"
+abstract: >-
+  A whole-cell, molecular-scale model of Escherichia coli K-12 MG1655
+  explorable in the browser. A Python pipeline turns the UniProt reference
+  proteome, measured copy numbers and PDB/AlphaFold structures into
+  coarse-grained ingredients; a three.js viewer packs and renders them as a
+  slab through a fast-growing cell.
+type: software
+authors:
+  - family-names: "Mendoza Rengifo"
+    given-names: "Emerita"
+    orcid: "https://orcid.org/0000-0001-5676-1472"
+    affiliation: "Brookhaven National Laboratory, Upton, NY, USA"
+repository-code: "https://github.com/emeritam/ecoli-vcell"
+url: "https://emeritam.github.io/ecoli-vcell/"
+license: MIT
+version: "0.5"
+date-released: "2026-11-05"
+keywords:
+  - Escherichia coli
+  - whole-cell model
+  - structural biology
+  - molecular visualization
+  - three.js
+  - AlphaFold

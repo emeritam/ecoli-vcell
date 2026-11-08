@@ -97,6 +97,40 @@ To view your new output, open the [viewer](https://emeritam.github.io/ecoli-vcel
 - Copy numbers from synthesis rates (Li et al. 2014) give a higher total protein mass than typical
   estimates for a single cell; treat absolute totals with care.
 
+## How to cite
+
+If you use this model, the viewer or the pipeline in your work, please cite it.
+GitHub's **Cite this repository** button (sidebar) generates these automatically from
+[`CITATION.cff`](CITATION.cff).
+
+**APA**
+
+> Mendoza Rengifo, E. (2026). *Virtual E. coli K-12: a browser-based whole-cell molecular model* (Version 0.5) [Computer software]. GitHub. https://github.com/emeritam/ecoli-vcell
+
+**ACS**
+
+> Mendoza Rengifo, E. *Virtual E. coli K-12: a Browser-Based Whole-Cell Molecular Model*, version 0.5; 2026. https://github.com/emeritam/ecoli-vcell (accessed YYYY-MM-DD).
+
+**Nature / Vancouver**
+
+> Mendoza Rengifo, E. Virtual E. coli K-12: a browser-based whole-cell molecular model. Version 0.5 (2026). https://github.com/emeritam/ecoli-vcell
+
+**BibTeX**
+
+```bibtex
+@software{mendozarengifo_ecolivcell_2026,
+  author  = {Mendoza Rengifo, Emerita},
+  title   = {Virtual {E}. coli {K}-12: a browser-based whole-cell molecular model},
+  version = {0.5},
+  year    = {2026},
+  url     = {https://github.com/emeritam/ecoli-vcell},
+  note    = {ORCID: 0000-0001-5676-1472}
+}
+```
+
+Please also cite the underlying resources this model is built from — UniProt,
+Li et al. (2014), the PDB and AlphaFold DB — listed under [Data sources](#data-sources).
+
 ## Data sources
 
 - [UniProt](https://www.uniprot.org/proteomes/UP000000625) reference proteome UP000000625 (*E. coli* K-12 MG1655)
